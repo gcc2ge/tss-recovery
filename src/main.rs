@@ -13,22 +13,22 @@ fn main() {
     let secret: FE = ECScalar::new_random();
 
     let (vss_scheme, secret_shares) = VerifiableSS::share(2, 5, &secret);
-    println!("{:?}", secret_shares[0]);
+    println!("{:?}", secret_shares[1]);
 
-    let g = lag::recover_lost_share(3, 5,  0);
+    let g = lag::recover_lost_share(3, 5,  1);
     println!("g {:?}", g);
 
-    let h = lag::recover_lost_share(3, 5,  0);
+    let h = lag::recover_lost_share(3, 5,  1);
     println!("h {:?}", h);
 
-    let v = lag::recover_lost_share(3, 5,  0);
+    let v = lag::recover_lost_share(3, 5,  1);
     println!("v {:?}", v);
 
     // // f'(x)=f(x)+g(x)+h(x)
-    let f2 = secret_shares[1]
-        .add(&h[1].1.get_element())
-        .add(&g[1].1.get_element())
-        .add(&v[1].1.get_element());
+    let f1 = secret_shares[0]
+        .add(&h[0].1.get_element())
+        .add(&g[0].1.get_element())
+        .add(&v[0].1.get_element());
     let f3 = secret_shares[2]
         .add(&h[2].1.get_element())
         .add(&g[2].1.get_element())
@@ -39,7 +39,7 @@ fn main() {
         .add(&v[3].1.get_element());
 
     // // recovery
-    let r = lag::reconstruct_at_index(&vec![1, 2, 3], &vec![f2, f3, f4], 1);
+    let r = lag::reconstruct_at_index(&vec![0, 2, 3], &vec![f1, f3, f4], 2);
     println!("recovery {:?}", r);
-    assert_eq!(r, secret_shares[0].clone());
+    assert_eq!(r, secret_shares[1].clone());
 }
