@@ -81,30 +81,24 @@ pub fn lagrange_interpolation_at_index(points: &[FE], values: &[FE], index: usiz
 // 1 => 0
 // 2 => r
 // 3 => r
-pub fn sample_polynomial(t: usize, skip: usize) -> Vec<(usize, FE)> {
-    let mut coefficients = (1..=t)
-        .filter(|&x| x != skip)
-        .map(|i| (i, ECScalar::new_random()))
-        .collect::<Vec<(usize, FE)>>();
+// t [1,2] ,skip 1
+pub fn sample_polynomial(t: &[usize], skip: usize) -> Vec<FE> {
 
-    coefficients.push((skip, ECScalar::zero()));
+    let mut coefficients = t
+        .iter()
+        .map(|i| {
+            if i != &skip {
+                ECScalar::new_random()
+            } else {
+                ECScalar::zero()
+            }
+        })
+        .collect::<Vec<FE>>();
+
     // 生成多项式
     coefficients
 }
 
-pub fn find(r: &Vec<(usize, FE)>, index: usize) -> Option<FE> {
-    let a = r
-        .iter()
-        .filter(|x| x.0 == index)
-        .map(|x| x.1)
-        .collect::<Vec<FE>>();
-
-    if a.len() > 0 {
-        Option::Some(a[0])
-    } else {
-        Option::None
-    }
-}
 
 #[test]
 fn test_recover() {
@@ -148,6 +142,39 @@ fn test_recover() {
     let f2 = secret_shares[1]
         .add(&h2.get_element())
         .add(&g2.get_element());
+    let f3 = secret_shares[2]
+        .add(&h3.get_element())
+        .add(&g3.get_element());
+
+    // // recovery
+    let r = reconstruct_at_index(&vec![1, 2], &vec![f2, f3], 1);
+    println!("recovery {:?}", r);
+    assert_eq!(r, secret_shares[0].clone());
+}
+
+#[test]
+fn test_sample_polynomial(){
+    let secret: FE = ECScalar::new_random();
+
+    let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
+    println!("{:?}",secret_shares[0]);
+
+    let g=sample_polynomial(&[0,1],0);
+    println!("{:?}",g);
+
+    let g3=reconstruct_at_index(&[0,1], &g, 3);
+    println!("{:?}",g3);
+
+    let h=sample_polynomial(&[0,1],0);
+    println!("{:?}",h);
+
+    let h3=reconstruct_at_index(&[0,1], &h, 3);
+    println!("{:?}",h3);
+
+ // // f'(x)=f(x)+g(x)+h(x)
+    let f2 = secret_shares[1]
+        .add(&h[1].get_element())
+        .add(&g[1].get_element());
     let f3 = secret_shares[2]
         .add(&h3.get_element())
         .add(&g3.get_element());
