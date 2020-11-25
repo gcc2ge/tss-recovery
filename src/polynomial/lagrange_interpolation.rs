@@ -33,9 +33,7 @@ pub fn lagrange_interpolation_at_index(points: &[FE], values: &[FE], index: usiz
             let num: FE = ECScalar::from(&BigInt::one());
             let denum: FE = ECScalar::from(&BigInt::one());
             let num = points.iter().fold(num, |acc, x| {
-                // points:(scale,index)
                 if !xi.eq(x) {
-                    // 使用x.0与index
                     let xj_sub_xi = x.sub(&index_scale.get_element());
                     acc * xj_sub_xi
                 } else {
@@ -106,6 +104,28 @@ pub fn sample_polynomial(t: usize, lost: usize) -> Vec<(usize, FE)> {
 
     // 生成多项式
     coefficients
+}
+
+fn find_vec(g: &Vec<(usize, FE)>, i: usize) -> Option<&(usize, FE)> {
+    let mut iter = g.iter();
+    iter.find(|x| x.0 == i)
+}
+
+pub fn recover_lost_share(t: usize, n: usize, lost: usize) -> Vec<(usize, FE)> {
+    let mut g = sample_polynomial(t, lost); 
+    let mut t = (0..n)
+        .map(|x| match find_vec(&g, x) {
+            None => {
+                let points = g.iter().map(|x| x.0).collect::<Vec<usize>>();
+                let shares = g.iter().map(|x| x.1).collect::<Vec<FE>>();
+
+                (x, reconstruct_at_index(&points, &shares, x + 1))
+            }
+            Some(&(a, b)) => (a, b),
+        })
+        .collect::<Vec<(usize, FE)>>();
+
+    t
 }
 
 #[cfg(test)]
@@ -239,6 +259,42 @@ mod tests {
             .add(&h4.get_element())
             .add(&g4.get_element())
             .add(&v4.get_element());
+
+        // // recovery
+        let r = lag::reconstruct_at_index(&vec![1, 2, 3], &vec![f2, f3, f4], 1);
+        println!("recovery {:?}", r);
+        assert_eq!(r, secret_shares[0].clone());
+    }
+
+    #[test]
+    fn test_recover_lost_share_3_5() {
+        let secret: FE = ECScalar::new_random();
+
+        let (vss_scheme, secret_shares) = VerifiableSS::share(2, 5, &secret);
+        println!("{:?}", secret_shares[0]);
+
+        let g = lag::recover_lost_share(3, 5, 0);
+        println!("g {:?}", g);
+
+        let h = lag::recover_lost_share(3, 5, 0);
+        println!("h {:?}", h);
+
+        let v = lag::recover_lost_share(3, 5, 0);
+        println!("v {:?}", v);
+
+        // // f'(x)=f(x)+g(x)+h(x)
+        let f2 = secret_shares[1]
+            .add(&h[1].1.get_element())
+            .add(&g[1].1.get_element())
+            .add(&v[1].1.get_element());
+        let f3 = secret_shares[2]
+            .add(&h[2].1.get_element())
+            .add(&g[2].1.get_element())
+            .add(&v[2].1.get_element());
+        let f4 = secret_shares[3]
+            .add(&h[3].1.get_element())
+            .add(&g[3].1.get_element())
+            .add(&v[3].1.get_element());
 
         // // recovery
         let r = lag::reconstruct_at_index(&vec![1, 2, 3], &vec![f2, f3, f4], 1);
