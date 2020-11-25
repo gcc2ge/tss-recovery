@@ -1,6 +1,4 @@
-use curv::{
-    elliptic::curves::traits::ECScalar, BigInt, FE,
-};
+use curv::{elliptic::curves::traits::ECScalar, BigInt, FE};
 //modify begin
 pub fn reconstruct_at_index(indices: &[usize], shares: &[FE], index: usize) -> FE {
     assert_eq!(shares.len(), indices.len());
@@ -81,55 +79,64 @@ pub fn lagrange_interpolation_at_index(points: &[FE], values: &[FE], index: usiz
 // 2 => r
 // 3 => r
 // t [1,2] ,skip 1
-pub fn sample_polynomial(t: &[usize], skip: usize) -> Vec<FE> {
+pub fn sample_polynomial(t: usize, lost: usize) -> Vec<(usize, FE)> {
+    let n: usize;
+    let insert: bool;
+    if t <= lost {
+        n = t - 1;
+        insert = true;
+    } else {
+        n = t;
+        insert = false;
+    }
 
-    let mut coefficients = t
-        .iter()
-        .map(|i| {
-            if i != &skip {
-                ECScalar::new_random()
+    let mut coefficients = (0..n)
+        .map(|x| {
+            if !insert && x == lost {
+                (x, ECScalar::zero())
             } else {
-                ECScalar::zero()
+                (x, ECScalar::new_random())
             }
         })
-        .collect::<Vec<FE>>();
+        .collect::<Vec<(usize, FE)>>();
+
+    if insert {
+        coefficients.push((lost, ECScalar::zero()));
+    }
 
     // 生成多项式
     coefficients
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
+    use crate::polynomial::lagrange_interpolation as lag;
     use curv::{
         cryptographic_primitives::secret_sharing::feldman_vss::VerifiableSS,
         elliptic::curves::traits::ECScalar, BigInt, FE,
     };
-    use crate::polynomial::lagrange_interpolation as lag;
 
     #[test]
     fn test_recover() {
         let secret: FE = ECScalar::new_random();
-    
+
         let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
-    
+
         let mut shares_vec = Vec::new();
         shares_vec.push(secret_shares[0].clone());
         shares_vec.push(secret_shares[1].clone());
         shares_vec.push(secret_shares[2].clone());
-    
+
         println!("secret {:?}", secret);
         println!("s1 {:?}", secret_shares[0].clone());
         println!("s2 {:?}", secret_shares[1].clone());
         println!("s3 {:?}", secret_shares[2].clone());
-    
+
         // let secret_reconstructed = lag::reconstruct_at_index(&vec![0, 1, 2], &shares_vec, 0);
         // println!("recover {:?}", secret_reconstructed);
-    
+
         // 生成 g(x) h(x)
-    
+
         // g(x)
         let g1: FE = ECScalar::zero(); //g(1)=0
         println!("g1 {:?}", g1.clone());
@@ -140,13 +147,13 @@ mod tests {
         // test
         // let g1_test = lag::reconstruct_at_index(&[1, 2], &[g2.clone(), g3.clone()], 1);
         // println!("g1_test {:?}", g1_test.clone());
-    
+
         // // h(x)
         let h1: FE = ECScalar::zero(); // h(1)=0
         let h2: FE = ECScalar::new_random(); // h(2)
         let h3 = lag::reconstruct_at_index(&vec![0, 1], &vec![h1.clone(), h2.clone()], 3); // h(3)
         println!("{:?}", h3);
-    
+
         // // f'(x)=f(x)+g(x)+h(x)
         let f2 = secret_shares[1]
             .add(&h2.get_element())
@@ -154,7 +161,7 @@ mod tests {
         let f3 = secret_shares[2]
             .add(&h3.get_element())
             .add(&g3.get_element());
-    
+
         // // recovery
         let r = lag::reconstruct_at_index(&vec![1, 2], &vec![f2, f3], 1);
         println!("recovery {:?}", r);
@@ -162,35 +169,35 @@ mod tests {
     }
 
     #[test]
-fn test_sample_polynomial(){
-    let secret: FE = ECScalar::new_random();
+    fn test_sample_polynomial() {
+        let secret: FE = ECScalar::new_random();
 
-    let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
-    println!("{:?}",secret_shares[0]);
+        let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
+        println!("{:?}", secret_shares[0]);
 
-    let g=lag::sample_polynomial(&[0,1],0);
-    println!("{:?}",g);
+        let g = lag::sample_polynomial(2, 0);
+        println!("g {:?}", g);
 
-    let g3=lag::reconstruct_at_index(&[0,1], &g, 3);
-    println!("{:?}",g3);
+        let g3 = lag::reconstruct_at_index(&[g[0].0, g[1].0], &[g[0].1, g[1].1], 3);
+        println!("g3 {:?}", g3);
 
-    let h=lag::sample_polynomial(&[0,1],0);
-    println!("{:?}",h);
+        let h = lag::sample_polynomial(2, 0);
+        println!("h {:?}", h);
 
-    let h3=lag::reconstruct_at_index(&[0,1], &h, 3);
-    println!("{:?}",h3);
+        let h3 = lag::reconstruct_at_index(&[h[0].0, h[1].0], &[h[0].1, h[1].1], 3);
+        println!("h3 {:?}", h3);
 
- // // f'(x)=f(x)+g(x)+h(x)
-    let f2 = secret_shares[1]
-        .add(&h[1].get_element())
-        .add(&g[1].get_element());
-    let f3 = secret_shares[2]
-        .add(&h3.get_element())
-        .add(&g3.get_element());
+        // // f'(x)=f(x)+g(x)+h(x)
+        let f2 = secret_shares[1]
+            .add(&h[1].1.get_element())
+            .add(&g[1].1.get_element());
+        let f3 = secret_shares[2]
+            .add(&h3.get_element())
+            .add(&g3.get_element());
 
-    // // recovery
-    let r = lag::reconstruct_at_index(&vec![1, 2], &vec![f2, f3], 1);
-    println!("recovery {:?}", r);
-    assert_eq!(r, secret_shares[0].clone());
-}
+        // // recovery
+        let r = lag::reconstruct_at_index(&vec![1, 2], &vec![f2, f3], 1);
+        println!("recovery {:?}", r);
+        assert_eq!(r, secret_shares[0].clone());
+    }
 }
