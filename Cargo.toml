@@ -1,5 +1,5 @@
 [package]
-name = "learn-rust"
+name = "tss-recovery"
 version = "0.1.0"
 authors = ["gcc2ge <1414786333@qq.com>"]
 edition = "2018"
