@@ -1,5 +1,5 @@
 [package]
-name = "tss-recovery"
+name = "tss_recovery"
 version = "0.1.0"
 authors = ["gcc2ge <1414786333@qq.com>"]
 edition = "2018"
