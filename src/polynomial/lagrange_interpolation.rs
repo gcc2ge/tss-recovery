@@ -292,13 +292,56 @@ mod tests {
             .add(&g[2].1.get_element())
             .add(&v[2].1.get_element());
         let f4 = secret_shares[3]
-            .add(&h[3].1.get_element())
+            
             .add(&g[3].1.get_element())
+            .add(&h[3].1.get_element())
             .add(&v[3].1.get_element());
 
         // // recovery
         let r = lag::reconstruct_at_index(&vec![1, 2, 3], &vec![f2, f3, f4], 1);
         println!("recovery {:?}", r);
         assert_eq!(r, secret_shares[0].clone());
+    }
+    
+
+    #[test]
+    fn test_recover_lost_share_2_3() {
+        // let secret: FE = ECScalar::new_random();
+
+        // let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
+        // println!("{:?}", secret_shares[0]);
+
+
+        let s1_b=BigInt::from_str_radix("dbe746278c26d078e5e58f40e80f6d374223d4d183232a1b3d39d1f830e161b8",16).unwrap();
+        let s1:FE=ECScalar::from(&s1_b);
+
+        let s2_b=BigInt::from_str_radix("a2cbf0a406754a0969bd77f46b9f53290d8966f684aa0fb9ce629f148afa4455",16).unwrap();
+        let s2:FE=ECScalar::from(&s2_b);
+
+        let s3_b=BigInt::from_str_radix("69b09b2080c3c399ed9560a7ef2f391ad8eef91b8630f5585f8b6c30e51326f2",16).unwrap();
+        let s3:FE=ECScalar::from(&s3_b);
+
+        let g = lag::recover_lost_share(2, 3, 0);
+        println!("g {:?}", g);
+
+        let h = lag::recover_lost_share(2, 3, 0);
+        println!("h {:?}", h);
+
+
+        // // f'(x)=f(x)+g(x)+h(x)
+        let f2 = s2
+            .add(&h[1].1.get_element())
+            .add(&g[1].1.get_element());
+
+        let f3 = s3
+            .add(&h[2].1.get_element())
+            .add(&g[2].1.get_element());
+
+    
+
+        // // recovery
+        let r = lag::reconstruct_at_index(&vec![1, 2], &vec![f2, f3], 1);
+        println!("recovery {:?}", r);
+        assert_eq!(r, s1.clone());
     }
 }
