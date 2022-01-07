@@ -1,4 +1,8 @@
-use curv::{elliptic::curves::traits::ECScalar, BigInt, FE};
+
+use curv::arithmetic::traits::*;
+use curv::elliptic::curves::secp256_k1::{FE};
+use curv::elliptic::curves::traits::*;
+use curv::BigInt;
 //modify begin
 pub fn reconstruct_at_index(indices: &[usize], shares: &[FE], index: usize) -> FE {
     assert_eq!(shares.len(), indices.len());
@@ -131,18 +135,19 @@ pub fn recover_lost_share(t: usize, n: usize, lost: usize) -> Vec<(usize, FE)> {
 #[cfg(test)]
 mod tests {
     use crate::polynomial::lagrange_interpolation as lag;
-    use curv::{
-        cryptographic_primitives::secret_sharing::feldman_vss::VerifiableSS,
-        elliptic::curves::traits::ECScalar, BigInt, FE,
-    };
+    use curv::arithmetic::traits::*;
+    use curv::cryptographic_primitives::secret_sharing::feldman_vss::VerifiableSS;
+    use curv::elliptic::curves::secp256_k1::{GE, FE};
+    use curv::elliptic::curves::traits::*;
+    use curv::BigInt;
 
     #[test]
     fn test_recover() {
         let secret: FE = ECScalar::new_random();
 
-        let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
+        let (vss_scheme, secret_shares) = VerifiableSS::<GE>::share(1, 3, &secret);
 
-        let mut shares_vec = Vec::new();
+        let mut shares_vec: Vec<FE> = Vec::new();
         shares_vec.push(secret_shares[0].clone());
         shares_vec.push(secret_shares[1].clone());
         shares_vec.push(secret_shares[2].clone());
@@ -192,7 +197,7 @@ mod tests {
     fn test_sample_polynomial_2_3() {
         let secret: FE = ECScalar::new_random();
 
-        let (vss_scheme, secret_shares) = VerifiableSS::share(1, 3, &secret);
+        let (vss_scheme, secret_shares) = VerifiableSS::<GE>::share(1, 3, &secret);
         println!("{:?}", secret_shares[0]);
 
         let g = lag::sample_polynomial(2, 0);
@@ -225,7 +230,7 @@ mod tests {
     fn test_sample_polynomial_3_5() {
         let secret: FE = ECScalar::new_random();
 
-        let (vss_scheme, secret_shares) = VerifiableSS::share(2, 5, &secret);
+        let (vss_scheme, secret_shares) = VerifiableSS::<GE>::share(2, 5, &secret);
         println!("{:?}", secret_shares[0]);
 
         let g = lag::sample_polynomial(3, 0);
@@ -270,7 +275,7 @@ mod tests {
     fn test_recover_lost_share_3_5() {
         let secret: FE = ECScalar::new_random();
 
-        let (vss_scheme, secret_shares) = VerifiableSS::share(2, 5, &secret);
+        let (vss_scheme, secret_shares) = VerifiableSS::<GE>::share(2, 5, &secret);
         println!("{:?}", secret_shares[0]);
 
         let g = lag::recover_lost_share(3, 5, 0);
